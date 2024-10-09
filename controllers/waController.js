@@ -1,6 +1,7 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
+// Initialize WhatsApp Client
 const client = new Client({
     authStrategy: new LocalAuth()
 });
@@ -15,12 +16,13 @@ client.on('qr', (qr) => {
 
 client.initialize();
 
+// API to send a message
 const api = async (req, res) => {
     let nohp = req.query.nohp || req.body.nohp;  
     const pesan = req.query.pesan || req.body.pesan;
 
     try {
-    
+        // Normalize phone number format for WhatsApp
         if (nohp.startsWith("0")) {
             nohp = "62" + nohp.slice(1) + "@c.us";
         } else if (nohp.startsWith("62")) {
@@ -29,10 +31,11 @@ const api = async (req, res) => {
             nohp = "62" + nohp + "@c.us";
         }
 
-        // Cek nomer terdaftar ?
+        // Check if the number is registered on WhatsApp
         const user = await client.isRegisteredUser(nohp);
 
         if (user) {
+            // Send message
             await client.sendMessage(nohp, pesan);
             return res.json({ status: "Success", pesan });
         } else {
