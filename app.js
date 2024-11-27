@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 let bodyParser =  require("body-parser")
-const port = 3000
+const port = 3001
 const router = require("./routers/wa")
 
 app.use(bodyParser.json());
