@@ -1,8 +1,6 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
-
-
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -21,49 +19,19 @@ client.on('qr', (qr) => {
 client.initialize();
 
 // API to send a message
-// const api = async (req, res) => {
-//     let nohp = req.query.nohp || req.body.nohp;  
-//     const pesan = req.query.pesan || req.body.pesan;
-
-//     try {
-//         // Normalize phone number format for WhatsApp
-//         if (nohp.startsWith("0")) {
-//             nohp = "62" + nohp.slice(1) + "@c.us";
-//         } else if (nohp.startsWith("62")) {
-//             nohp = nohp + "@c.us";
-//         } else {
-//             nohp = "62" + nohp + "@c.us";
-//         }
-
-//         // Check if the number is registered on WhatsApp
-//         const user = await client.isRegisteredUser(nohp);
-
-//         if (user) {
-//             // Send message
-//             await client.sendMessage(nohp, pesan);
-//             return res.json({ status: "Success", pesan });
-//         } else {
-//             return res.json({ status: "Failed", pesan: "Number is not registered" }); 
-//         }
-//     } catch (error) {
-//         console.error("Error occurred:", error);
-//         return res.status(500).json({ status: "error", pesan: "Server error" });
-//     }
-// }
-
 const api = async (req, res) => {
-    let nohp = req.query.nohp || req.body.nohp;  // For individuals
+    let nohp = req.query.nohp || req.body.nohp;  
     const pesan = req.query.pesan || req.body.pesan;
-    const groupName = req.query.group || req.body.group; // For groups
+    const groupName = req.query.group || req.body.group; // Group name parameter
 
     try {
-        // If a group name is provided, send to the group
         if (groupName) {
             // Search for the group by name
             const chats = await client.getChats();
-            const group = chats.find(chat => chat.isGroup && chat.name === groupName);
+            const group = chats.find(chat => chat.isGroup && chat.name.toLowerCase() === groupName.toLowerCase());
 
             if (group) {
+                // Send message to the group
                 await client.sendMessage(group.id._serialized, pesan);
                 return res.json({ status: "Success", pesan: `Message sent to group: ${groupName}` });
             } else {
@@ -71,28 +39,33 @@ const api = async (req, res) => {
             }
         }
 
-        // Otherwise, handle individual messages
-        if (nohp.startsWith("0")) {
-            nohp = "62" + nohp.slice(1) + "@c.us";
-        } else if (nohp.startsWith("62")) {
-            nohp = nohp + "@c.us";
-        } else {
-            nohp = "62" + nohp + "@c.us";
+        if (nohp) {
+            // Normalize phone number format for WhatsApp
+            if (nohp.startsWith("0")) {
+                nohp = "62" + nohp.slice(1) + "@c.us";
+            } else if (nohp.startsWith("62")) {
+                nohp = nohp + "@c.us";
+            } else {
+                nohp = "62" + nohp + "@c.us";
+            }
+
+            // Check if the number is registered on WhatsApp
+            const user = await client.isRegisteredUser(nohp);
+
+            if (user) {
+                // Send message
+                await client.sendMessage(nohp, pesan);
+                return res.json({ status: "Success", pesan });
+            } else {
+                return res.json({ status: "Failed", pesan: "Number is not registered" }); 
+            }
         }
 
-        const user = await client.isRegisteredUser(nohp);
-
-        if (user) {
-            await client.sendMessage(nohp, pesan);
-            return res.json({ status: "Success", pesan });
-        } else {
-            return res.json({ status: "Failed", pesan: "Number is not registered" });
-        }
+        return res.status(400).json({ status: "Failed", pesan: "No recipient provided" });
     } catch (error) {
         console.error("Error occurred:", error);
-        return res.status(500).json({ status: "error", pesan: "Server error" });
+        return res.status(500).json({ status: "error", pesan: "Server error", details: error.message });
     }
 };
-
 
 module.exports = api;
